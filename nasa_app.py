@@ -10,12 +10,6 @@ import streamlit as st
 import webbrowser
 import PyPDF2
 import docx
-import streamlit.components.v1 as components 
-
-if 'show_similarity_graph' not in st.session_state:
-    st.session_state.show_similarity_graph = False
-if 'show_knowledge_graph' not in st.session_state:
-    st.session_state.show_knowledge_graph = False
 
 # =========================
 # 🎨 Background Image Setup
@@ -325,39 +319,7 @@ def build_similarity_graph(df, max_nodes=30, top_k=3):
             if sim_score > 0.1:
                 G.add_edge(art_i, art_j, weight=sim_score)
     return G
-def display_knowledge_graph_online(df):
-    """Fungsi baru untuk display graph dalam Streamlit online"""
-    try:
-        # Build graph
-        G = build_knowledge_graph(df, max_nodes=30)
-        
-        # Create Pyvis network
-        net = Network(height="600px", width="100%", bgcolor="#0d1b2a", font_color="white")
-        net.from_nx(G)
-        
-        # Generate HTML content
-        html_content = net.generate_html()
-        
-        # Display dalam Streamlit menggunakan components
-        components.html(html_content, height=600, scrolling=True)
-        
-        return True
-    except Exception as e:
-        st.error(f"❌ Error generating graph: {e}")
-        return False
 
-def display_similarity_graph_online(df):
-    """Fungsi untuk similarity graph"""
-    try:
-        G = build_similarity_graph(df, max_nodes=20)
-        net = Network(height="600px", width="100%", bgcolor="#0d1b2a", font_color="white")
-        net.from_nx(G)
-        html_content = net.generate_html()
-        components.html(html_content, height=600, scrolling=True)
-        return True
-    except Exception as e:
-        st.error(f"❌ Error generating similarity graph: {e}")
-        return False
 # =========================
 # 🖥️ Main UI
 # =========================
@@ -984,20 +946,35 @@ st.sidebar.markdown("""
     <p style="color: #e0f7fa; text-align: center; font-size: 0.9em;">Explore connections between space research articles</p>
 </div>
 """, unsafe_allow_html=True)
-# ✅ BUTTONS BARU - LETAK DI SINI, SELEPAS HEADER
+
+# Graph Buttons dengan design NASA
 col1, col2 = st.sidebar.columns(2)
 
 with col1:
     if st.button("🔗 **Similarity Graph**", use_container_width=True, help="Show how articles are related by content similarity"):
-        st.session_state.show_similarity_graph = True
-        st.session_state.show_knowledge_graph = False
+        G_sim = build_similarity_graph(df, max_nodes=20)
+        net_sim = Network(height="600px", width="100%", bgcolor="#0d1b2a", font_color="white", cdn_resources="in_line")
+        net_sim.from_nx(G_sim)
+        net_sim.force_atlas_2based()
+        filename = "similarity_graph.html"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(net_sim.generate_html())
+        webbrowser.open("file://" + os.path.realpath(filename))
+        st.sidebar.success("🚀 Similarity Graph launched!")
 
 with col2:
     if st.button("🧩 **Knowledge Graph**", use_container_width=True, help="Visualize keywords and concepts from articles"):
-        st.session_state.show_knowledge_graph = True
-        st.session_state.show_similarity_graph = False
+        G_kw = build_knowledge_graph(df, max_nodes=20)
+        net_kw = Network(height="600px", width="100%", bgcolor="#0d1b2a", font_color="white", cdn_resources="in_line")
+        net_kw.from_nx(G_kw)
+        net_kw.force_atlas_2based()
+        filename = "knowledge_graph.html"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(net_kw.generate_html())
+        webbrowser.open("file://" + os.path.realpath(filename))
+        st.sidebar.success("🌠 Knowledge Graph launched!")
 
-# Additional NASA-themed elements  ← ✅ HANYA SATU!
+# Additional NASA-themed elements
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
 <div style="
@@ -1015,7 +992,7 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# NASA Stats  ← ✅ HANYA SATU!
+# NASA Stats
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
 <div style="text-align: center;">
@@ -1023,54 +1000,3 @@ st.sidebar.markdown("""
     <p style="color: #e0f7fa; font-size: 0.9em; margin: 0;">Space Publications</p>
 </div>
 """, unsafe_allow_html=True)
-# =========================
-# 🌐 GRAPH DISPLAY AREA - ONLINE VERSION
-# =========================
-st.markdown("---")
-
-# Graph Display Section
-if st.session_state.get('show_similarity_graph'):
-    st.markdown("### 🔗 Similarity Graph - Article Relationships")
-    st.info("🖱️ **Tips**: Drag nodes to explore • Scroll to zoom • Click nodes to see connections")
-    with st.spinner("🔄 Generating similarity graph... This may take a few seconds"):
-        display_similarity_graph_online(df)
-        
-elif st.session_state.get('show_knowledge_graph'):
-    st.markdown("### 🧩 Knowledge Graph - Keywords & Concepts") 
-    st.info("🖱️ **Tips**: Blue nodes = Articles • Green nodes = Keywords • Drag to explore relationships")
-    with st.spinner("🔄 Generating knowledge graph... This may take a few seconds"):
-        display_knowledge_graph_online(df)
-else:
-    # Default message - hanya show pertama kali
-    st.markdown("""
-    <div style="
-        background: rgba(255, 255, 255, 0.05);
-        padding: 60px 20px;
-        border-radius: 15px;
-        border: 2px dashed rgba(0, 245, 255, 0.3);
-        text-align: center;
-        margin: 20px 0;
-    ">
-        <h3 style="color: #00f5ff;">🌌 Graph Visualization Ready</h3>
-        <p style="color: #e0f7fa; font-size: 1.1em;">
-            Click on either graph button in the sidebar to visualize NASA research relationships
-        </p>
-        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
-            <div style="text-align: center;">
-                <div style="color: orange; font-size: 2em;">🔗</div>
-                <p style="color: #e0f7fa; margin: 5px 0;">Similarity Graph<br><small>Article connections</small></p>
-            </div>
-            <div style="text-align: center;">
-                <div style="color: lightblue; font-size: 2em;">🧩</div>
-                <p style="color: #e0f7fa; margin: 5px 0;">Knowledge Graph<br><small>Keywords & concepts</small></p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# =========================
-# 🏁 END OF APP
-# =========================
-st.markdown('</div>', unsafe_allow_html=True)  # Tutup main-content div
-
-
